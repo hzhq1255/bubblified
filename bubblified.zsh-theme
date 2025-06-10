@@ -12,9 +12,9 @@ prompt_symbol='-->'
 
 user_symbol='%n'
 user_machine_symbol='@'
-machine_symbol='%M'
+machine_symbol='%m'
 
-filepath_symbol='%~'
+filepath_symbol='%3~'
 
 git_branch_symbol=''
 git_clean_symbol=''
@@ -31,7 +31,7 @@ ssh_symbol='ssh'
 
 # COLOR CONSTANTS
 # NOTE: Possible values include zsh-color-strings like 'red', 'black', 'magenta' etc. Aswell as zsh-color-codes which you can list with the command 'spectrum_ls', e.g. '078' for the 78th color code.
-bubble_color='240'
+bubble_color='250'
 
 prompt_symbol_color='blue'
 prompt_symbol_error_color='red'
@@ -172,6 +172,72 @@ ssh_bubble () {
     fi
 }
 
+prompt_user_machine_ssh_only() {
+    # Shows user@machine bubble only if in an SSH session
+    if [[ -n $SSH_CLIENT || -n $SSH_TTY || -n $SSH_CONNECTION ]]; then
+        echo -n "$user_machine_bubble"
+    else
+        echo -n "" # Empty string for local sessions
+    fi
+}
+
+prompt_custom_filepath() {
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        local git_root
+        git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+        
+        if [[ -n "$git_root" ]]; then
+            local current_path="$PWD"
+
+            if [[ "$current_path" == "$git_root" ]]; then
+                # At the root of the git repo, display "."
+                echo -n "."
+            elif [[ "$current_path" == "$git_root"/* ]]; then
+                # Inside a subdirectory, show path relative to git root, truncated if too long
+                local relative_git_path="${current_path#$git_root}"
+                local temp_git_path="${relative_git_path//[^\/]}"
+                local relative_git_path_slash_count="${#temp_git_path}"
+
+                if (( relative_git_path_slash_count > 10 )); then
+                    echo -n '%3~'
+                else
+                    echo -n "%${relative_git_path_slash_count}~"
+                fi
+            else
+                # Fallback: in git tree, but path structure unexpected (e.g. symlink complexity)
+                local fallback_path_display="${PWD/#$HOME/~}"
+                local temp_fallback_path="${fallback_path_display//[^\/]}"
+                local fallback_slash_count=${#temp_fallback_path}
+                if (( fallback_slash_count > 10 )); then
+                    echo -n '%3~'
+                else
+                    echo -n '%~'
+                fi
+            fi
+        else
+            # Could not determine git root, though --is-inside-work-tree was true (odd case)
+            local nogit_root_path_display="${PWD/#$HOME/~}"
+            local temp_nogit_root_path="${nogit_root_path_display//[^\/]}"
+            local nogit_root_slash_count=${#temp_nogit_root_path}
+            if (( nogit_root_slash_count > 10 )); then
+                echo -n '%3~'
+            else
+                echo -n '%~'
+            fi
+        fi
+    else
+        # Not in a git repository
+        local not_git_path_display="${PWD/#$HOME/~}"
+        local temp_not_git_path="${not_git_path_display//[^\/]}"
+        local not_git_slash_count=${#temp_not_git_path}
+        if (( not_git_slash_count > 10 )); then
+            echo -n '%3~'
+        else
+            echo -n '%~'
+        fi
+    fi
+}
+
 
 # DEFAULT PROMPT BUILDING BLOCKS
 bubble_left="$(foreground $bubble_color)$blub_left%{$reset_color%}$(background $bubble_color)"
@@ -184,6 +250,10 @@ end_of_prompt=" %(?,$(foreground $prompt_symbol_color)$prompt_symbol,$(foregroun
 user_machine_bubble="$bubble_left$(foreground $user_color)$user_symbol$(foreground $user_machine_symbol_color)$user_machine_symbol$(foreground $machine_color)$machine_symbol$bubble_right"
 
 filepath_bubble="$bubble_left$(foreground $filepath_color)$filepath_symbol$bubble_right"
+
+filepath_bubble_func(){
+    echo "$bubble_left$(foreground $filepath_color)$(prompt_custom_filepath)$bubble_right"
+}
 
 error_code_bubble="%(?,,$bubble_left$(foreground $prompt_symbol_error_color)%?$bubble_right)"
 
@@ -202,6 +272,8 @@ _newline=$'\n'
 _lineup=$'\e[1A'
 _linedown=$'\e[1B'
 
-PROMPT='$(ssh_bubble)$user_machine_bubble$filepath_bubble$_newline$end_of_prompt%{$reset_color%}'
+PROMPT='$(ssh_bubble)$(prompt_user_machine_ssh_only)$(filepath_bubble_func)$_newline$end_of_prompt%{$reset_color%}'
 RPROMPT='%{$_lineup%}$(git_bubble)$error_code_bubble%{$_linedown%}%{$reset_color%}'
+
+
 
