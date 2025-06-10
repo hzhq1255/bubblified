@@ -31,7 +31,7 @@ ssh_symbol='ssh'
 
 # COLOR CONSTANTS
 # NOTE: Possible values include zsh-color-strings like 'red', 'black', 'magenta' etc. Aswell as zsh-color-codes which you can list with the command 'spectrum_ls', e.g. '078' for the 78th color code.
-bubble_color='black'
+bubble_color='240'
 
 prompt_symbol_color='blue'
 prompt_symbol_error_color='red'
@@ -47,9 +47,9 @@ git_unstaged_color='yellow'
 git_staged_color='magenta' 
 git_stashed_color='blue'
 git_unmerged_color='red'
-git_symbols_color='black'
+git_symbols_color='white'
 
-ssh_symbol_color='black'
+ssh_symbol_color='white'
 ssh_bubble_color='green'
 
 # HELPER FUNCTIONS
